@@ -20,10 +20,8 @@ class Solution:
         totalRow = len(grid)
         totalCol = len(grid[0])
 
-        if row == totalRow : return
-        if col == totalCol : return
-        if col == -1 : return
-        if row == -1 : return
+        if row == totalRow or col == totalCol or col == -1 or row == -1 : 
+            return
 
         if (grid[row][col] == '1') :
             grid[row][col] = 'X'
