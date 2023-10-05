@@ -21,3 +21,4 @@ if __name__ == "__main__" :
     assert t1.pair_Matcing_Sum([1, 2, 3, 4, 5], 10) == False, "Should be false"
     assert t1.pair_Matcing_Sum([1, 2, 3, 4, 5], 0) == False, "Should be false"
     assert t1.pair_Matcing_Sum([1, 2, 3, 4, 5], 9) == True, "Should be True"
+    assert t1.pair_Matcing_Sum([5, 2, 3, 4, 1], 9) == True, "Should be True"
