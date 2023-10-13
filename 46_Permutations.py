@@ -14,19 +14,20 @@ class Solution:
     
 
         if len(unusedNumber) ==0 :
-            completeList.append(currentPermutation)
+            completeList.append(currentPermutation[:])
             return
     
         for i in unusedNumber :
             
             unusedNumber1 = unusedNumber.copy()
-            currentPermutation1 = currentPermutation.copy()
 
             unusedNumber1.remove(i)
-            currentPermutation1.append(i)
-            self.getPermutation(unusedNumber1, currentPermutation1, completeList)
+            
+            currentPermutation.append(i)
+            self.getPermutation(unusedNumber1, currentPermutation, completeList)
+            currentPermutation.pop()
             
         
 if __name__ == "__main__" :
     t1 = Solution()
-    t1.permute([1, 2, 3])
+    t1.permute([1, 2])
