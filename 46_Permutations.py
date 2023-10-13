@@ -1,33 +1,34 @@
+# look at git versino 1 -- non memory otimized version - beat 25 % of submission on memory
+# look at git version 2 and comment for more details -- little better on memory otimized version - beat 55 % of submissions on memory
+# look at git version 3 and comment for more details -- more memory otimized version - beat 81 % of submissions on memory
 class Solution:
 
     def permute(self, nums: list[int]) -> list[list[int]]:
         
         completeList = []
-        unusedNumber = nums.copy()
         currentPermutation = []
 
-        self.getPermutation(unusedNumber, currentPermutation, completeList)
+        self.getPermutation(nums, currentPermutation, completeList)
         
         return completeList
     
-    def getPermutation(self, unusedNumber: list[int], currentPermutation: list[int], completeList: list[list[int]]):
+    def getPermutation(self, nums: list[int], currentPermutation: list[int], completeList: list[list[int]]):
     
 
-        if len(unusedNumber) ==0 :
+        if len(currentPermutation) == len(nums) :
             completeList.append(currentPermutation[:])
             return
     
-        for i in unusedNumber :
+        for i in nums :
             
-            unusedNumber1 = unusedNumber.copy()
-
-            unusedNumber1.remove(i)
-            
-            currentPermutation.append(i)
-            self.getPermutation(unusedNumber1, currentPermutation, completeList)
-            currentPermutation.pop()
-            
+            # remove the need previously used variable unusedNumber to track the number already visited.
+            # we directly check that if curent number exists in the currentPermutation
+            if i not in currentPermutation :            
+                
+                currentPermutation.append(i)
+                self.getPermutation(nums, currentPermutation, completeList)
+                currentPermutation.pop()
         
 if __name__ == "__main__" :
     t1 = Solution()
-    t1.permute([1, 2])
+    t1.permute([1, 2, 3, 4])
