@@ -1,3 +1,4 @@
+#https://leetcode.com/problems/permutations/
 # look at git versino 1 -- non memory otimized version - beat 25 % of submission on memory
 # look at git version 2 and comment for more details -- little better on memory otimized version - beat 55 % of submissions on memory
 # look at git version 3 and comment for more details -- more memory otimized version - beat 81 % of submissions on memory
@@ -16,7 +17,7 @@ class Solution:
     
 
         if len(currentPermutation) == len(nums) :
-            completeList.append(currentPermutation[:])
+            completeList.append(currentPermutation.copy())
             return
     
         for i in nums :
