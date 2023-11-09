@@ -1,7 +1,7 @@
 # https://leetcode.com/problems/sort-colors/
 class Solution:
     
-    def sortColors(self, nums: list[int]) -> None:
+    def quickSort(self, nums: list[int]) -> None:
 
         # solving it using heap short
         def sort(begin: int, end :int) -> None:
@@ -41,6 +41,7 @@ class Solution:
 
 if __name__ == "__main__" :
     t1 = Solution()
-    t1.sortColors([2,0,2,1,1,0])
-    t1.sortColors([2,0,1])
+    t1.quickSort([2,0,2,1,1,0])
+    t1.quickSort([2,0,1])
+    t1.quickSort([30, 3, 6, 8, 25, 100, 33, 4, 0, 25])
     #t1.sortColors([2,2,1,2,1,1,1,0,0,2,1,0,2,1,2,2,1,1,1,1,1,0,2,0,2,0,2,2,1,0,2,1,0,2,1,2,0,0,0,0,2,1,1,2,0,1,2,2,0,0,2,2,0,1,0,1,0,0,1,1,1,0,0,2,2,2,1,0,0,2,1,0,1,0,2,2,1,2,1,1,2,1,1,0,0,2,1,0,0])
