@@ -2,7 +2,6 @@
 
 class Solution:
     def findPeakElement(self, nums: list[int]) -> int:
-        eakIndex = 0
         previousIndex = 0
         peakIndex = 0
         lenght = len(nums)
