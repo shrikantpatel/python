@@ -50,3 +50,17 @@ while num != 0:
         continue
 
 print(f'You entered: {num}')
+
+def fruit_color(fruit: str) -> str:
+    match fruit:
+        case "apple":
+            return "red"
+        case "banana":
+            return "yellow"
+        case "grape":
+            return "purple"
+        case _:
+            return "unknown"
+        
+print(fruit_color("banana"))
+
