@@ -1,4 +1,6 @@
-class Movie :
+from abc import ABC, abstractmethod
+
+class Movie(ABC) :
 
     def __init__(self, title, rating, year) :
         self.title = title
@@ -6,7 +8,11 @@ class Movie :
         self.year = year
 
     def display_info(self) :
-        print(f"Title: {self.title}, Rating: {self.rating}, Year: {self.year}")
+        print(f"Title: {self.title}, Rating: {self.rating}, Year: {self.year}, Language: {self.get_language()}")
+
+    @abstractmethod
+    def get_language(self) :
+        return "Unknown"
 
 class IndianMovie(Movie) :
 
@@ -14,19 +20,13 @@ class IndianMovie(Movie) :
         super().__init__(title, rating, year)
         self.language = language
 
-    def display_info(self) :
-        super().display_info()
-        print(f"Language: {self.language}")
+    def get_language(self) :
+        return self.language
 
-def print_movie_info(movie: Movie) :
-    print(f"Title: {movie.title}, Rating: {movie.rating}, Year: {movie.year}")
 
 if __name__ == "__main__":
-    movie1 = Movie("Inception", 8.8, 2010)
+    #movie1 = Movie("Inception", 8.8, 2010) # This will raise an error since Movie is abstract
+    
     movie2 = IndianMovie("3 Idiots", 8.4, 2009, "Hindi")
 
-    movie1.display_info()
     movie2.display_info()
-
-    print_movie_info(movie1)
-    print_movie_info(movie2)
