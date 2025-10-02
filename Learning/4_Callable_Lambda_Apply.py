@@ -32,9 +32,10 @@ def apply1(t: Callable[[int, int], int], v1: int, v2: int) -> int:
         raise TypeError("t must be callable")
     return t(v1, v2)
 
-def inc(x: int, y: int) -> int:
+def addition(x: int, y: int) -> int:
     return x + y
 
 add = lambda x, y: x + y  # inferred as Callable[[int, int], int]
 
+print(apply1(addition, 3, 4))      # 7
 print(apply1(add, 3, 4))       # 7
