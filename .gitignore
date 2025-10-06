@@ -5,3 +5,19 @@
 .idea/workspace.xml
 .idea/inspectionProfiles/profiles_settings.xml
 .vscode/launch.json
+
+# Google Cloud Service Account Credentials (NEVER COMMIT THESE!)
+*.json
+workloadid-sa-credential-prod.json
+filename_for_serviceacccount.json
+
+# Configuration files with sensitive data
+Carto/config.json
+
+# Other sensitive files
+.env
+*.key
+*.pem
+*.p12
+secrets/
+credentials/

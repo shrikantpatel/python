@@ -1,0 +1,5 @@
+{
+  "credential_file": "your-service-account-file.json",
+  "project_id": "your-google-cloud-project-id",
+  "bigquery_query": "SELECT t.z, t.x, t.y, t.data FROM `your-project.your-dataset.your-table` AS t WHERE z = 2"
+}
