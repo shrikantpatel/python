@@ -72,19 +72,20 @@ class GeometryProcessor:
         except Exception as e:
             return f"WKT CONVERSION ERROR: {e}"
     
-    def process_feature_geometry(self, feature, z, x, y, show_tile_space=True):
+    def process_feature_geometry(self, feature, z, x, y, extent=8192, show_tile_space=True):
         """
         Process a single feature's geometry, converting from tile space to WGS84 and generating WKT.
         
         Args:
             feature (dict): Feature data from decoded MVT
-            z (int): Zoom level of the tile
-            x (int): Tile X coordinate
+            z (int): Zoom level
+            x (int): Tile X coordinate  
             y (int): Tile Y coordinate
-            show_tile_space (bool): Whether to return tile space information for display
+            extent (int): MVT extent for this tile (default 8192)
+            show_tile_space (bool): Whether to include tile space geometry in output
             
         Returns:
-            dict: Processed geometry information with WGS84 coordinates and WKT
+            dict: Processed geometry information including WGS84 and WKT formats
         """
         result = {
             'tile_space_geom': None,
@@ -105,7 +106,7 @@ class GeometryProcessor:
         
         try:
             # Convert geometry from tile space to WGS84
-            wgs84_geom = self.coordinate_converter.convert_geometry_to_wgs84(tile_space_geom, z, x, y)
+            wgs84_geom = self.coordinate_converter.convert_geometry_to_wgs84(tile_space_geom, z, x, y, extent)
             result['wgs84_geom'] = wgs84_geom
             
             # Generate WKT representations

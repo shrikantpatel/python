@@ -56,28 +56,33 @@ class MVTTileDecoder:
     
     def display_tile_features(self, decoded_tile, tile_index, z, x, y):
         """
-        Display the contents of a decoded MVT tile.
+        Display decoded MVT tile features with enhanced detail and geometry conversion.
         
         Args:
             decoded_tile (dict): Decoded MVT tile data
-            tile_index (int): Index of the tile for display purposes
-            z (int): Zoom level of the tile
-            x (int): Tile X coordinate  
+            tile_index (int): Zero-based tile index for display
+            z (int): Zoom level
+            x (int): Tile X coordinate
             y (int): Tile Y coordinate
         """
         if decoded_tile:
             print(f"--- Decoded MVT Tile {tile_index + 1} Contents ---")
             for layer_name, layer_data in decoded_tile.items():
                 features = layer_data.get('features', [])
+                extent = layer_data.get('extent', 8192)  # Get extent from layer data
+                
                 print(f"Layer: {layer_name}")
                 print(f"  Total Features: {len(features)}")
+                print(f"  Extent: {extent}")
                 
                 # Print details of the first few features as samples
                 for i, feature in enumerate(features[:3]):  # Show first 3 features
                     print(f"  --- Sample Feature {i + 1} ---")
                     
-                    # Process feature geometry using shared function
-                    processed = self.geometry_processor.process_feature_geometry(feature, z, x, y, show_tile_space=True)
+                    # Process feature geometry using shared function with correct extent
+                    processed = self.geometry_processor.process_feature_geometry(
+                        feature, z, x, y, extent=extent, show_tile_space=True
+                    )
                     
                     print(f"  Geometry Type: {processed['geometry_type']}")
                     print(f"  Properties: {processed['properties']}")

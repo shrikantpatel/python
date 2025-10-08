@@ -43,22 +43,26 @@ class CoordinateConverter:
         return (west, south, east, north)
     
     @staticmethod
-    def tile_space_to_wgs84(tile_x, tile_y, z, x, y, extent=4096):
+    def tile_space_to_wgs84(tile_x, tile_y, z, x, y, extent=8192):
         """
         Convert MVT tile space coordinates to WGS84 geographic coordinates.
         
+        This handles MVT coordinates that may extend beyond the standard extent
+        due to buffering or feature clipping at tile boundaries.
+        
         Args:
-            tile_x (float): X coordinate in tile space (0-4095)
-            tile_y (float): Y coordinate in tile space (0-4095)
+            tile_x (float): X coordinate in tile space (may extend beyond 0-extent)
+            tile_y (float): Y coordinate in tile space (may extend beyond 0-extent)
             z (int): Zoom level of the tile
             x (int): Tile X coordinate
             y (int): Tile Y coordinate
-            extent (int): MVT extent (usually 4096)
+            extent (int): MVT extent (default 8192 for this dataset)
             
         Returns:
             tuple: (longitude, latitude) in WGS84 decimal degrees
         """
         # Convert tile space coordinates to fractional tile coordinates
+        # Allow coordinates outside 0-extent range for buffered MVT data
         frac_x = x + (tile_x / extent)
         frac_y = y + (tile_y / extent)
         
@@ -69,7 +73,7 @@ class CoordinateConverter:
         
         return (lon, lat)
     
-    def convert_geometry_to_wgs84(self, geometry, z, x, y, extent=4096):
+    def convert_geometry_to_wgs84(self, geometry, z, x, y, extent=8192):
         """
         Convert MVT tile space geometry to WGS84 geographic coordinates.
         
@@ -78,7 +82,7 @@ class CoordinateConverter:
             z (int): Zoom level of the tile
             x (int): Tile X coordinate
             y (int): Tile Y coordinate
-            extent (int): MVT extent (usually 4096)
+            extent (int): MVT extent (default 8192 for this dataset)
             
         Returns:
             dict: Geometry with WGS84 coordinates
