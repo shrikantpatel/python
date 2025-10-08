@@ -6,6 +6,17 @@
 .idea/inspectionProfiles/profiles_settings.xml
 .vscode/launch.json
 
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
 # Google Cloud Service Account Credentials (NEVER COMMIT THESE!)
 *.json
 workloadid-sa-credential-prod.json
