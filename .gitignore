@@ -14,6 +14,16 @@ filename_for_serviceacccount.json
 # Configuration files with sensitive data
 Carto/config.json
 
+# Generated output files
+tiles_geometry_collection.wkt
+tiles_geometry_collection_formatted.wkt
+tiles_bounding_boxes.csv
+tiles_bounding_boxes.wkt
+
+# Generated WKT files in Carto directory
+Carto/*.wkt
+Carto/tiles_geometry_collection_formatted.wkt
+
 # Other sensitive files
 .env
 *.key

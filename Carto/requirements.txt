@@ -1,0 +1,3 @@
+# MVT Processor Dependencies
+google-cloud-bigquery>=3.13.0
+mapbox-vector-tile>=2.2.0

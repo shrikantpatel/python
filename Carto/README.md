@@ -1,6 +1,71 @@
-# MVT Decoder - BigQuery Integration
+# MVT Processor - Class-Based Architecture
 
-This script decodes Mapbox Vector Tile (MVT) data fetched from Google BigQuery.
+A comprehensive Mapbox Vector Tile (MVT) processing system that fetches geospatial data from BigQuery, processes MVT tiles, converts coordinates to WGS84, and generates WKT geometries.
+
+## Architecture Overview
+
+The system has been refactored from a monolithic structure into a modular, class-based architecture following the Single Responsibility Principle:
+
+### Core Classes
+
+1. **ConfigManager** (`config_manager.py`)
+   - Handles configuration loading and validation
+   - Manages service account credential discovery
+   - Provides configuration validation and error handling
+
+2. **BigQueryClient** (`bigquery_client.py`)
+   - Manages BigQuery authentication and client setup
+   - Executes queries and retrieves MVT data
+   - Handles coordinate conversion for bounding box calculations
+
+3. **CoordinateConverter** (`coordinate_converter.py`)
+   - Converts coordinates between tile space and WGS84
+   - Handles tile bounding box calculations
+   - Processes geometry coordinate transformations
+
+4. **GeometryProcessor** (`geometry_processor.py`)
+   - Generates WKT (Well-Known Text) from geometries
+   - Processes feature geometries and properties
+   - Creates geometry collections
+
+5. **MVTTileDecoder** (`mvt_tile_decoder.py`)
+   - Decompresses and decodes MVT tile data
+   - Displays tile features and metadata
+   - Handles MVT binary data processing
+
+6. **FileWriter** (`file_writer.py`)
+   - Saves geometry collections to files
+   - Generates structured output with metadata
+   - Handles file formatting and organization
+
+7. **MVTProcessor** (`main.py`)
+   - Main orchestration class that coordinates all components
+   - Implements the complete processing workflow
+   - Provides unified entry point for the application
+
+## File Structure
+
+```
+Carto/
+├── main.py                    # Main orchestration class and entry point
+├── config_manager.py          # Configuration management
+├── bigquery_client.py         # BigQuery operations
+├── coordinate_converter.py    # Coordinate system conversions
+├── geometry_processor.py      # WKT generation and processing
+├── mvt_tile_decoder.py        # MVT decompression and decoding
+├── file_writer.py             # Output file generation
+├── requirements.txt           # Python dependencies
+└── README.md                  # This documentation
+```
+
+## Benefits of Class-Based Architecture
+
+- **Modularity**: Each class has a focused responsibility
+- **Maintainability**: Easier to modify and extend individual components
+- **Testability**: Classes can be unit tested independently
+- **Reusability**: Components can be reused in other projects
+- **Readability**: Clear separation of concerns improves code understanding
+- **Debugging**: Isolated functionality simplifies troubleshooting
 
 ## Prerequisites
 

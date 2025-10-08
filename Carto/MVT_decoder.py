@@ -251,6 +251,140 @@ def get_mvt_data_from_bigquery():
     return execute_bigquery_query(client, custom_query)
 
 
+def tile_space_to_wgs84(tile_x, tile_y, z, x, y, extent=4096):
+    """
+    Convert MVT tile space coordinates to WGS84 geographic coordinates.
+    
+    Args:
+        tile_x (float): X coordinate in tile space (0-4095)
+        tile_y (float): Y coordinate in tile space (0-4095)
+        z (int): Zoom level of the tile
+        x (int): Tile X coordinate
+        y (int): Tile Y coordinate
+        extent (int): MVT extent (usually 4096)
+        
+    Returns:
+        tuple: (longitude, latitude) in WGS84 decimal degrees
+    """
+    # Convert tile space coordinates to fractional tile coordinates
+    frac_x = x + (tile_x / extent)
+    frac_y = y + (tile_y / extent)
+    
+    # Convert fractional tile coordinates to WGS84
+    lon = (frac_x / (2.0 ** z)) * 360.0 - 180.0
+    lat_rad = math.atan(math.sinh(math.pi - (2.0 * math.pi * frac_y) / (2.0 ** z)))
+    lat = math.degrees(lat_rad)
+    
+    return (lon, lat)
+
+
+def convert_geometry_to_wgs84(geometry, z, x, y, extent=4096):
+    """
+    Convert MVT tile space geometry to WGS84 geographic coordinates.
+    
+    Args:
+        geometry (dict): GeoJSON-like geometry object
+        z (int): Zoom level of the tile
+        x (int): Tile X coordinate
+        y (int): Tile Y coordinate
+        extent (int): MVT extent (usually 4096)
+        
+    Returns:
+        dict: Geometry with WGS84 coordinates
+    """
+    if not isinstance(geometry, dict) or 'type' not in geometry or 'coordinates' not in geometry:
+        return geometry
+    
+    geom_type = geometry['type']
+    coords = geometry['coordinates']
+    
+    def convert_point(pt):
+        """Convert a single point from tile space to WGS84"""
+        if len(pt) >= 2:
+            lon, lat = tile_space_to_wgs84(pt[0], pt[1], z, x, y, extent)
+            return [lon, lat] + pt[2:]  # Preserve any Z/M coordinates
+        return pt
+    
+    if geom_type == 'Point':
+        converted_coords = convert_point(coords)
+    elif geom_type == 'LineString':
+        converted_coords = [convert_point(pt) for pt in coords]
+    elif geom_type == 'Polygon':
+        converted_coords = [[convert_point(pt) for pt in ring] for ring in coords]
+    elif geom_type == 'MultiPoint':
+        converted_coords = [convert_point(pt) for pt in coords]
+    elif geom_type == 'MultiLineString':
+        converted_coords = [[convert_point(pt) for pt in line] for line in coords]
+    elif geom_type == 'MultiPolygon':
+        converted_coords = [[[convert_point(pt) for pt in ring] for ring in poly] for poly in coords]
+    else:
+        # Unsupported geometry type, return as-is
+        return geometry
+    
+    return {
+        'type': geom_type,
+        'coordinates': converted_coords
+    }
+
+
+def geometry_to_wkt(geometry):
+    """
+    Convert a GeoJSON-like geometry object to WKT format.
+    
+    Args:
+        geometry (dict): GeoJSON-like geometry object
+        
+    Returns:
+        str: WKT representation of the geometry
+    """
+    if not isinstance(geometry, dict) or 'type' not in geometry or 'coordinates' not in geometry:
+        return "INVALID GEOMETRY"
+    
+    geom_type = geometry['type']
+    coords = geometry['coordinates']
+    
+    def format_point(pt):
+        """Format a point coordinate"""
+        if len(pt) >= 2:
+            return f"{pt[0]:.8f} {pt[1]:.8f}"
+        return f"{pt[0]} {pt[1]}"
+    
+    try:
+        if geom_type == 'Point':
+            return f"POINT ({format_point(coords)})"
+        elif geom_type == 'LineString':
+            coords_str = ", ".join(format_point(pt) for pt in coords)
+            return f"LINESTRING ({coords_str})"
+        elif geom_type == 'Polygon':
+            rings = []
+            for ring in coords:
+                ring_coords = ", ".join(format_point(pt) for pt in ring)
+                rings.append(f"({ring_coords})")
+            return f"POLYGON ({', '.join(rings)})"
+        elif geom_type == 'MultiPoint':
+            points = ", ".join(f"({format_point(pt)})" for pt in coords)
+            return f"MULTIPOINT ({points})"
+        elif geom_type == 'MultiLineString':
+            lines = []
+            for line in coords:
+                line_coords = ", ".join(format_point(pt) for pt in line)
+                lines.append(f"({line_coords})")
+            return f"MULTILINESTRING ({', '.join(lines)})"
+        elif geom_type == 'MultiPolygon':
+            polygons = []
+            for poly in coords:
+                rings = []
+                for ring in poly:
+                    ring_coords = ", ".join(format_point(pt) for pt in ring)
+                    rings.append(f"({ring_coords})")
+                polygons.append(f"({', '.join(rings)})")
+            return f"MULTIPOLYGON ({', '.join(polygons)})"
+        else:
+            return f"UNSUPPORTED GEOMETRY TYPE: {geom_type}"
+    except Exception as e:
+        return f"WKT CONVERSION ERROR: {e}"
+
+
 def decompress_mvt_data(mvt_data):
     """
     Decompress MVT data based on its format (binary or base64).
@@ -288,13 +422,63 @@ def decompress_mvt_data(mvt_data):
         return mvt_binary
 
 
-def display_tile_features(decoded_tile, tile_index):
+def process_feature_geometry(feature, z, x, y, show_tile_space=True):
+    """
+    Process a single feature's geometry, converting from tile space to WGS84 and generating WKT.
+    
+    Args:
+        feature (dict): Feature data from decoded MVT
+        z (int): Zoom level of the tile
+        x (int): Tile X coordinate
+        y (int): Tile Y coordinate
+        show_tile_space (bool): Whether to return tile space information for display
+        
+    Returns:
+        dict: Processed geometry information with WGS84 coordinates and WKT
+    """
+    result = {
+        'tile_space_geom': None,
+        'wgs84_geom': None,
+        'tile_space_wkt': None,
+        'wgs84_wkt': None,
+        'properties': feature.get('properties', {}),
+        'geometry_type': feature.get('geometry_type'),
+        'error': None
+    }
+    
+    tile_space_geom = feature.get('geometry')
+    result['tile_space_geom'] = tile_space_geom
+    
+    if not tile_space_geom:
+        result['error'] = "No geometry data available"
+        return result
+    
+    try:
+        # Convert geometry from tile space to WGS84
+        wgs84_geom = convert_geometry_to_wgs84(tile_space_geom, z, x, y)
+        result['wgs84_geom'] = wgs84_geom
+        
+        # Generate WKT representations
+        if show_tile_space:
+            result['tile_space_wkt'] = geometry_to_wkt(tile_space_geom)
+        result['wgs84_wkt'] = geometry_to_wkt(wgs84_geom)
+        
+    except Exception as e:
+        result['error'] = f"Could not convert geometry: {e}"
+    
+    return result
+
+
+def display_tile_features(decoded_tile, tile_index, z, x, y):
     """
     Display the contents of a decoded MVT tile.
     
     Args:
         decoded_tile (dict): Decoded MVT tile data
         tile_index (int): Index of the tile for display purposes
+        z (int): Zoom level of the tile
+        x (int): Tile X coordinate  
+        y (int): Tile Y coordinate
     """
     if decoded_tile:
         print(f"--- Decoded MVT Tile {tile_index + 1} Contents ---")
@@ -306,11 +490,20 @@ def display_tile_features(decoded_tile, tile_index):
             # Print details of the first few features as samples
             for i, feature in enumerate(features[:3]):  # Show first 3 features
                 print(f"  --- Sample Feature {i + 1} ---")
-                print(f"  Geometry Type: {feature.get('geometry_type')}")
-                print(f"  Properties: {feature.get('properties')}")
-                # Note: Geometry coordinates here are in MVT tile space (0-4095), 
-                # not WGS84 latitude/longitude.
-                print(f"  Geometry (Tile Space): {feature.get('geometry')}")
+                
+                # Process feature geometry using shared function
+                processed = process_feature_geometry(feature, z, x, y, show_tile_space=True)
+                
+                print(f"  Geometry Type: {processed['geometry_type']}")
+                print(f"  Properties: {processed['properties']}")
+                print(f"  Geometry (Tile Space): {processed['tile_space_geom']}")
+                
+                if processed['error']:
+                    print(f"  [Error: {processed['error']}]")
+                else:
+                    print(f"  Geometry (WGS84): {processed['wgs84_geom']}")
+                    print(f"  WKT (Tile Space): {processed['tile_space_wkt']}")
+                    print(f"  WKT (WGS84): {processed['wgs84_wkt']}")
             
             if len(features) > 3:
                 print(f"  ... and {len(features) - 3} more features")
@@ -333,7 +526,7 @@ def decode_mvt_tile(tile_info, tile_index):
         tile_index (int): Zero-based index of the tile for display purposes
         
     Returns:
-        bool: True if decoding was successful, False otherwise
+        tuple: (success: bool, decoded_tile: dict or None) - True/decoded_data if successful, False/None otherwise
     """
     try:
         # Extract tile information
@@ -360,13 +553,162 @@ def decode_mvt_tile(tile_info, tile_index):
         print("MVT decoded successfully")
 
         # Step 3: Display the decoded tile contents
-        display_tile_features(decoded_tile, tile_index)
+        display_tile_features(decoded_tile, tile_index, z, x, y)
             
-        return True
+        return True, decoded_tile
         
     except Exception as e:
         print(f"An error occurred decoding tile {tile_index + 1}: {e}")
-        return False
+        return False, None
+
+
+def format_properties_string(properties, max_props=3):
+    """
+    Format properties dictionary into a readable string.
+    
+    Args:
+        properties (dict): Feature properties
+        max_props (int): Maximum number of properties to show
+        
+    Returns:
+        str: Formatted properties string
+    """
+    if not properties:
+        return ""
+    
+    prop_items = list(properties.items())[:max_props]
+    prop_str = ", ".join(f"{k}: {v}" for k, v in prop_items)
+    
+    if len(properties) > max_props:
+        prop_str += f", ... and {len(properties) - max_props} more properties"
+    
+    return prop_str
+
+
+def create_tile_bbox_wkt(bbox):
+    """
+    Create a WKT polygon from a tile bounding box.
+    
+    Args:
+        bbox (tuple): Bounding box as (west, south, east, north)
+        
+    Returns:
+        str: WKT polygon representation of the bounding box
+    """
+    west, south, east, north = bbox
+    return f"POLYGON (({west} {south}, {east} {south}, {east} {north}, {west} {north}, {west} {south}))"
+
+
+def create_geometry_collection(tiles_info):
+    """
+    Create a WKT geometry collection from all tile bounding boxes.
+    
+    Args:
+        tiles_info (list): List of tile information dictionaries
+        
+    Returns:
+        str: WKT GeometryCollection containing all tile bounding box polygons
+    """
+    polygons = []
+    
+    for i, tile_info in enumerate(tiles_info):
+        bbox = tile_info['bbox']
+        # Create WKT polygon for this tile's bounding box using shared function
+        polygon_wkt = create_tile_bbox_wkt(bbox)
+        polygons.append(polygon_wkt)
+    
+    # Combine all polygons into a geometry collection
+    geometry_collection = f"GEOMETRYCOLLECTION({', '.join(polygons)})"
+    
+    return geometry_collection
+
+
+def save_geometry_collection_to_file(geometry_collection, tiles_count, tiles_info, all_decoded_tiles):
+    """
+    Save the formatted geometry collection with tile bounding boxes and individual feature geometries.
+    
+    Args:
+        geometry_collection (str): WKT geometry collection string
+        tiles_count (int): Number of tiles in the collection
+        tiles_info (list): List of tile information dictionaries
+        all_decoded_tiles (list): List of decoded tile data
+        
+    Returns:
+        str: formatted_filename - name of created file
+    """
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Save formatted version with comprehensive geometry data
+    formatted_filename = os.path.join(script_dir, "tiles_geometry_collection_formatted.wkt")
+    
+    with open(formatted_filename, 'w') as formatted_file:
+        formatted_file.write(f"-- Combined Geometry Collection of {tiles_count} MVT Tiles (Comprehensive)\n")
+        formatted_file.write(f"-- Generated on: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        formatted_file.write("-- This collection includes tile bounding boxes and individual feature geometries\n\n")
+        
+        # Write tile bounding boxes collection
+        formatted_file.write("-- ===== TILE BOUNDING BOXES =====\n")
+        formatted_file.write("-- Geometry collection of all tile bounding boxes\n\n")
+        
+        # Format the geometry collection for better readability
+        formatted_geom = geometry_collection.replace("GEOMETRYCOLLECTION(", "GEOMETRYCOLLECTION(\n  ")
+        formatted_geom = formatted_geom.replace("), POLYGON", "),\n  POLYGON")
+        formatted_geom = formatted_geom.replace("))", ")\n)")
+        
+        formatted_file.write(formatted_geom)
+        formatted_file.write("\n\n")
+        
+        # Write individual tile details and feature geometries
+        formatted_file.write("-- ===== INDIVIDUAL TILES AND FEATURES =====\n\n")
+        
+        for i, (tile_info, decoded_tile) in enumerate(zip(tiles_info, all_decoded_tiles)):
+            z, x, y = tile_info['z'], tile_info['x'], tile_info['y']
+            bbox = tile_info['bbox']
+            west, south, east, north = bbox
+            
+            # Write tile header
+            formatted_file.write(f"-- Tile {i+1}: z={z}, x={x}, y={y}\n")
+            formatted_file.write(f"-- Bounding Box: West={west:.6f}, South={south:.6f}, East={east:.6f}, North={north:.6f}\n")
+            
+            # Write tile bounding box
+            tile_bbox_wkt = create_tile_bbox_wkt(bbox)
+            formatted_file.write(f"-- Tile Bounding Box:\n{tile_bbox_wkt}\n\n")
+            
+            # Write feature geometries if available
+            if decoded_tile:
+                formatted_file.write(f"-- Features in Tile {i+1}:\n")
+                feature_count = 0
+                
+                for layer_name, layer_data in decoded_tile.items():
+                    features = layer_data.get('features', [])
+                    formatted_file.write(f"-- Layer: {layer_name} ({len(features)} features)\n")
+                    
+                    for j, feature in enumerate(features):
+                        feature_count += 1
+                        
+                        # Process feature geometry using shared function
+                        processed = process_feature_geometry(feature, z, x, y, show_tile_space=False)
+                        
+                        if processed['wgs84_wkt'] and not processed['error']:
+                            # Write feature info
+                            formatted_file.write(f"-- Feature {feature_count} (Layer: {layer_name})\n")
+                            if processed['properties']:
+                                prop_str = format_properties_string(processed['properties'])
+                                formatted_file.write(f"-- Properties: {prop_str}\n")
+                            formatted_file.write(f"{processed['wgs84_wkt']}\n\n")
+                        else:
+                            error_msg = processed['error'] or "No valid geometry"
+                            formatted_file.write(f"-- Feature {feature_count}: {error_msg}\n\n")
+                
+                if feature_count == 0:
+                    formatted_file.write("-- No valid features found in this tile\n\n")
+            else:
+                formatted_file.write(f"-- No decoded data available for Tile {i+1}\n\n")
+            
+            formatted_file.write("-" * 60 + "\n\n")
+    
+    return os.path.basename(formatted_filename)
 
 
 def main():
@@ -388,10 +730,13 @@ def main():
     # Step 2: Process all MVT tiles
     print(f"\nStep 2: Processing {len(mvt_tiles_list)} MVT tile(s)...")
     successful_decodes = 0
+    all_decoded_tiles = []
     
     for i, tile_info in enumerate(mvt_tiles_list):
-        if decode_mvt_tile(tile_info, i):
+        success, decoded_tile = decode_mvt_tile(tile_info, i)
+        if success:
             successful_decodes += 1
+        all_decoded_tiles.append(decoded_tile)
 
     # Step 3: Generate processing summary
     print(f"\n=== Processing Summary ===")
@@ -399,8 +744,30 @@ def main():
     print(f"Successfully decoded: {successful_decodes}")
     print(f"Failed to decode: {len(mvt_tiles_list) - successful_decodes}")
     
+    # Step 4: Create combined geometry collection
+    print(f"\nStep 3: Creating combined geometry collection...")
+    geometry_collection = create_geometry_collection(mvt_tiles_list)
+    
+    # Step 5: Save geometry collection to file
+    print("Step 4: Saving geometries to files...")
+    formatted_filename = save_geometry_collection_to_file(geometry_collection, len(mvt_tiles_list), mvt_tiles_list, all_decoded_tiles)
+    
+    print(f"\n=== Geometry Files Generated ===")
+    print(f"Comprehensive geometry file: Carto/{formatted_filename}")
+    print(f"Total tiles in collection: {len(mvt_tiles_list)}")
+    
+    # Display a preview of the geometry collection
+    preview_length = 200
+    if len(geometry_collection) > preview_length:
+        preview = geometry_collection[:preview_length] + "..."
+    else:
+        preview = geometry_collection
+    
+    print(f"\nGeometry Collection Preview:")
+    print(f"  {preview}")
+    
     print(f"\n=== Processing Complete ===")
-    print("MVT tiles have been successfully processed and decoded!")
+    print("MVT tiles have been successfully processed and combined into a geometry collection!")
     return True
 
 
