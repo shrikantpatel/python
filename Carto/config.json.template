@@ -1,5 +1,24 @@
 {
   "credential_file": "your-service-account-file.json",
   "project_id": "your-google-cloud-project-id",
-  "bigquery_query": "SELECT t.z, t.x, t.y, t.data FROM `your-project.your-dataset.your-table` AS t WHERE z = 2"
+  "bigquery_query": "SELECT t.z, t.x, t.y, t.data FROM `your-project.your-dataset.your-table` AS t WHERE t.x = 3851 and t.y = 6772",
+  
+  "_comment": "TEXAS CITIES TILE COORDINATES - Change x,y values in bigquery_query above",
+  "texas_cities": {
+    "houston": {"x": 3851, "y": 6772, "description": "Currently selected"},
+    "dallas": {"x": 3786, "y": 6611},
+    "austin": {"x": 3743, "y": 6745},
+    "san_antonio": {"x": 3709, "y": 6789},
+    "fort_worth": {"x": 3762, "y": 6612},
+    "el_paso": {"x": 3345, "y": 6666},
+    "arlington": {"x": 3772, "y": 6613},
+    "corpus_christi": {"x": 3759, "y": 6873},
+    "plano": {"x": 3791, "y": 6598},
+    "lubbock": {"x": 3556, "y": 6568}
+  },
+  
+  "example_queries": {
+    "dallas": "SELECT t.z, t.x, t.y, t.data FROM `your-project.your-dataset.your-table` AS t WHERE t.x = 3786 and t.y = 6611",
+    "austin": "SELECT t.z, t.x, t.y, t.data FROM `your-project.your-dataset.your-table` AS t WHERE t.x = 3743 and t.y = 6745"
+  }
 }
