@@ -50,6 +50,9 @@ class CoordinateConverter:
         This handles MVT coordinates that may extend beyond the standard extent
         due to buffering or feature clipping at tile boundaries.
         
+        IMPORTANT: MVT uses top-left origin (Y=0 at top), but geographic coordinates 
+        use bottom-left origin (Y increases upward). We need to flip Y coordinates.
+        
         Args:
             tile_x (float): X coordinate in tile space (may extend beyond 0-extent)
             tile_y (float): Y coordinate in tile space (may extend beyond 0-extent)
@@ -61,10 +64,14 @@ class CoordinateConverter:
         Returns:
             tuple: (longitude, latitude) in WGS84 decimal degrees
         """
+        # CRITICAL FIX: Flip Y coordinate for correct orientation
+        # MVT Y=0 is at top, but we need Y=0 at bottom for geographic coordinates
+        flipped_tile_y = extent - tile_y
+        
         # Convert tile space coordinates to fractional tile coordinates
         # Allow coordinates outside 0-extent range for buffered MVT data
         frac_x = x + (tile_x / extent)
-        frac_y = y + (tile_y / extent)
+        frac_y = y + (flipped_tile_y / extent)
         
         # Convert fractional tile coordinates to WGS84
         lon = (frac_x / (2.0 ** z)) * 360.0 - 180.0
