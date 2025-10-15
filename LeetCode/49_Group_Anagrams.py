@@ -9,6 +9,14 @@ class Solution:
         for str in strs :
             sorted_str = "".join(sorted(str))
             anagram_groups.setdefault(sorted_str, []).append(str)
+            # hard way of doing this
+            """
+            if sorted_str in anagram_groups:
+                anagram_groups[sorted_str].append(str)
+            else:
+                anagram_groups[sorted_str] = []
+                anagram_groups[sorted_str].append(str)
+            """
 
         return list(anagram_groups.values())
 
